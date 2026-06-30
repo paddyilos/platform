@@ -21,6 +21,7 @@
         "doctrine/dbal": "^2.0",
         "fideloper/proxy": "~4.0",
         "fruitcake/laravel-cors": "^2.0",
+        "gasparesganga/php-shapefile": "^3.4",
         "guzzlehttp/guzzle": "^6.5|^7.0.1",
         "intercom/intercom-php": "^4.4",
         "ircmaxell/password-compat": "^1.0.4",
