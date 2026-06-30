@@ -33,6 +33,12 @@ class ServiceProvider extends AggregateServiceProvider
             ->middleware('api')
             ->namespace('Ushahidi\Modules\V5\Http\Controllers')
             ->group(__DIR__ . '/routes/api.php');
+
+        // Liberia custom routes (geographic alerts, contact us, LERN import)
+        Route::prefix('api')
+            ->middleware('api')
+            ->namespace('Ushahidi\Modules\V5\Http\Controllers')
+            ->group(__DIR__ . '/routes/liberia.php');
     }
 
     /**
