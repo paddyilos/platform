@@ -32,7 +32,7 @@ class ConfigPolicy
      * Public config groups
      * @var [string, ...]
      */
-    protected $public_groups = ['features', 'map', 'site', 'deployment_id'];
+    protected $public_groups = ['features', 'map', 'site', 'deployment_id', 'about_us'];
 
     /**
      * Public config groups

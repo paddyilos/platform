@@ -15,13 +15,15 @@ class Config extends BaseModel
         'data-provider',
         'map',
         'twitter',
-        'gmail'
+        'gmail',
+        'about_us'
     ];
     const AVIALABLE_CONFIG_GROUPS_FOR_NON_ADMIN = [
         'features',
         'site',
         'deployment_id',
-        'map'
+        'map',
+        'about_us'
     ];
     /**
      * Add eloquent style timestamps
