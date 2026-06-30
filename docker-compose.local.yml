@@ -1,0 +1,37 @@
+version: "2"
+# Local development override for iReport Liberia migration.
+# Uses port 8082 (instead of 8080) to avoid conflict with the UNICC stack running on 8080.
+# MariaDB exposed on 33061 (already non-conflicting).
+# Frontend Mzima client runs separately via npm on port 4200.
+services:
+  mysql:
+    container_name: ushahidi-mysql
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: ushahidi
+      MARIADB_USER: ushahidi
+      MARIADB_PASSWORD: ushahidi
+    ports:
+      - "33061:3306"
+
+  redis:
+    container_name: ushahidi-redis
+
+  platform:
+    container_name: ushahidi-platform
+    environment:
+      APP_KEY: base64:XuCy86TUW/f6+aXmf14s4f7xxdIjNWUdZrQFUzTt994=
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_TIMEZONE: Africa/Monrovia
+      DEFAULT_CLIENT_URL: http://localhost:4200
+      RUN_PLATFORM_MIGRATIONS: "true"
+      CONTACT_US_EMAIL: peacebuildingliberia@gmail.com
+    ports:
+      - "8082:8080"
+
+  platform_tasks:
+    container_name: ushahidi-tasks
+    environment:
+      APP_KEY: base64:XuCy86TUW/f6+aXmf14s4f7xxdIjNWUdZrQFUzTt994=
+      APP_ENV: local
