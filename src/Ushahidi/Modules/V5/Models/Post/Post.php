@@ -64,7 +64,11 @@ class Post extends BaseModel
         'source',
         'metadata',
         'created',
-        'updated'
+        'updated',
+        // Liberia PBO custom fields — county/district, exposed for the
+        // Analysis dashboard's reports-by-county chart. See LIBERIA_CUSTOM.md.
+        'mgmt_lev_1',
+        'mgmt_lev_2'
     ];
 
     public const ALLOWED_RELATIONSHIPS = [

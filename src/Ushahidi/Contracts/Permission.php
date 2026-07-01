@@ -25,4 +25,6 @@ interface Permission
         const EDIT_OWN_POSTS        = 'Edit their own posts';
         const DELETE_POSTS          = 'Delete Posts';
         const DELETE_OWN_POSTS      = 'Delete Their Own Posts';
+        // Liberia PBO custom permission — gates the Analysis dashboard/templates feature.
+        const ACCESS_ANALYSIS       = 'Access analysis';
 }

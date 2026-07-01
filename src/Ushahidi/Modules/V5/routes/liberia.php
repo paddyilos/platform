@@ -24,3 +24,13 @@ $router->post('v3/lern-import', 'LernImportController@store')->middleware('auth:
 // the existing GET/PUT /api/v3/config/{group}/{key} routes in api.php.
 // See Models/Config.php and Policies/ConfigPolicy.php for the group
 // registration.
+
+// Analysis dashboard + saved report templates — gated server-side by
+// AnalysisTemplateController::requireAccessAnalysis() (Permission::ACCESS_ANALYSIS).
+// Uses v5/ (unlike the get-alerts/contact-us routes above) to match the
+// stock API's actual version convention.
+$router->get('v5/analysis-templates', 'AnalysisTemplateController@index')->middleware('auth:api');
+$router->get('v5/analysis-templates/{id}', 'AnalysisTemplateController@show')->middleware('auth:api');
+$router->post('v5/analysis-templates', 'AnalysisTemplateController@store')->middleware('auth:api');
+$router->put('v5/analysis-templates/{id}', 'AnalysisTemplateController@update')->middleware('auth:api');
+$router->delete('v5/analysis-templates/{id}', 'AnalysisTemplateController@destroy')->middleware('auth:api');
