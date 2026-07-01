@@ -47,7 +47,9 @@ trait HandlePostOnlyParameters
                         if ($this->userHasManagePostPermissions()) {
                             $post->contact = $post->message->contact;
                         } else {
-                            $post->contact = $post->message->contact->setVisible(["id"]);
+                            $post->contact = $post->message->contact
+                                ? $post->message->contact->setVisible(["id"])
+                                : null;
                         }
                     }
                     break;
