@@ -25,9 +25,12 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         'Ushahidi\Modules\V5\Events\PostCreatedEvent' => [
             'Ushahidi\Modules\V5\Listeners\PostCreatedListener',
+            // Liberia custom — emails Get Alerts subscribers on publish. See LIBERIA_CUSTOM.md.
+            'Ushahidi\Modules\V5\Listeners\SendPostAlertsListener',
         ],
         'Ushahidi\Modules\V5\Events\PostUpdatedEvent' => [
             'Ushahidi\Modules\V5\Listeners\PostUpdatedListener',
+            'Ushahidi\Modules\V5\Listeners\SendPostAlertsListener',
         ],
     ];
 }
