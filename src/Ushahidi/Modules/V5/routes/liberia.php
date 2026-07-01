@@ -11,8 +11,9 @@
 $router->post('v3/get-alerts', 'AlertController@store');
 $router->get('v3/get-alerts/unsubscribe-email/{hash}', 'AlertController@unsubscribe');
 
-// Public contact form
-$router->post('v3/contact-us', 'ContactUsController@store');
+// Public contact form — throttled since it has no auth and no other spam
+// protection beyond the frontend's client-side captcha
+$router->post('v3/contact-us', 'ContactUsController@store')->middleware('throttle:5,1');
 
 // LERN data import (admin only)
 $router->post('v3/lern-import', 'LernImportController@store')->middleware('auth:api');
