@@ -5,7 +5,7 @@ namespace Ushahidi\Modules\V5\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use \GasparesgangaPHPShapeFile\ShapeFile;
+use Ushahidi\Modules\V5\Helpers\GeoLookupHelper;
 
 class LernImportController extends V5Controller
 {
@@ -80,7 +80,7 @@ class LernImportController extends V5Controller
         $lat = $row['latitude'] ?? null;
         $lng = $row['longitude'] ?? null;
         if ($lat && $lng) {
-            [$mgmtLev1, $mgmtLev2] = $this->lookupLocation((float)$lng, (float)$lat);
+            [$mgmtLev1, $mgmtLev2] = GeoLookupHelper::lookup((float)$lat, (float)$lng);
         }
 
         // Insert post
@@ -112,50 +112,6 @@ class LernImportController extends V5Controller
                 ]
             );
         }
-    }
-
-    private function lookupLocation(float $lng, float $lat): array
-    {
-        $shapePath = storage_path('Shapefiles/liberia/County2');
-        if (!file_exists($shapePath . '.shp')) {
-            return ['', ''];
-        }
-
-        try {
-            $shapeFile = new ShapeFile($shapePath);
-            foreach ($shapeFile as $record) {
-                if ($record['dbf']['_deleted'] ?? false) continue;
-                $polygon = $record['shp']['parts'][0]['points'] ?? [];
-                if ($this->pointInPolygon($lng, $lat, $polygon)) {
-                    $county   = $record['dbf']['FIRST_CCNA'] ?? '';
-                    $district = $record['dbf']['DNAME'] ?? '';
-                    return [trim($county), trim($district)];
-                }
-            }
-        } catch (\Exception $e) {
-            // Shapefile read error — continue without geographic data
-        }
-
-        return ['', ''];
-    }
-
-    private function pointInPolygon(float $px, float $py, array $points): bool
-    {
-        $n = count($points);
-        if ($n < 3) return false;
-        $inside = false;
-        $j = $n - 1;
-        for ($i = 0; $i < $n; $i++) {
-            $xi = $points[$i]['x'];
-            $yi = $points[$i]['y'];
-            $xj = $points[$j]['x'];
-            $yj = $points[$j]['y'];
-            if ((($yi > $py) !== ($yj > $py)) && ($px < ($xj - $xi) * ($py - $yi) / ($yj - $yi) + $xi)) {
-                $inside = !$inside;
-            }
-            $j = $i;
-        }
-        return $inside;
     }
 
     private function parseCsv(string $path): array

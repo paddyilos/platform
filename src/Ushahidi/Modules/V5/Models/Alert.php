@@ -7,7 +7,7 @@ class Alert extends BaseModel
     public $timestamps = false;
     protected $table = 'alerts';
     protected $fillable = [
-        'radius', 'latitude', 'longitude', 'email', 'categories',
+        'radius', 'latitude', 'longitude', 'location', 'email', 'categories',
         'status', 'hash', 'created', 'updated',
     ];
 }

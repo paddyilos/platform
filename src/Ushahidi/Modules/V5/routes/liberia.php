@@ -10,6 +10,7 @@
 // Geographic alert subscriptions (public)
 $router->post('v3/get-alerts', 'AlertController@store');
 $router->get('v3/get-alerts/unsubscribe-email/{hash}', 'AlertController@unsubscribe');
+$router->get('v3/get-alerts/lookup-location', 'AlertController@lookupLocation')->middleware('throttle:30,1');
 
 // Public contact form — throttled since it has no auth and no other spam
 // protection beyond the frontend's client-side captcha
