@@ -5,6 +5,8 @@ namespace Ushahidi\Modules\V5\Repository\Post;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Ushahidi\Core\Exception\NotFoundException;
+use Ushahidi\Core\Exception\ValidatorException;
+use Ushahidi\Modules\V5\Models\Attribute;
 use Ushahidi\Modules\V5\Models\Post\Post;
 use Ushahidi\Modules\V5\DTO\Paging;
 use Ushahidi\Modules\V5\DTO\PostSearchFields;
@@ -459,6 +461,61 @@ class EloquentPostRepository implements PostRepository
 
 
 
+    /**
+     * Attribute types that can be grouped by, mapped to the EAV value table
+     * that stores their scalar `value` column (keyed by `form_attribute_id`).
+     * Geometry/point/media types have no single groupable value and are
+     * rejected below rather than silently producing meaningless results.
+     */
+    private const GROUPABLE_ATTRIBUTE_TABLES = [
+        'varchar' => 'post_varchar',
+        'text' => 'post_text',
+        'datetime' => 'post_datetime',
+        'decimal' => 'post_decimal',
+        'int' => 'post_int',
+    ];
+
+    private function applyGroupByAttribute($search_query, ?string $attribute_key)
+    {
+        if (!$attribute_key) {
+            throw new ValidatorException(
+                'Invalid group_by_attribute_key',
+                ['group_by_attribute_key' => ['group_by_attribute_key is required when group_by=attribute']]
+            );
+        }
+
+        $attribute = Attribute::where('key', $attribute_key)->first();
+        if (!$attribute) {
+            throw new ValidatorException(
+                'Invalid group_by_attribute_key',
+                ['group_by_attribute_key' => ["No attribute found with key '$attribute_key'"]]
+            );
+        }
+
+        $value_table = self::GROUPABLE_ATTRIBUTE_TABLES[$attribute->type] ?? null;
+        if (!$value_table) {
+            throw new ValidatorException(
+                'Invalid group_by_attribute_key',
+                [
+                    'group_by_attribute_key' => [
+                        "Grouping by attribute type '{$attribute->type}' is not supported"
+                    ]
+                ]
+            );
+        }
+
+        // Note: a `checkbox`-input varchar attribute stores all selected options as one
+        // JSON-encoded value in a single row (PostVarchar::decodeCheckboxValue), unlike
+        // `tags`, which has one posts_tags row per selection. Grouping by such an
+        // attribute buckets by the whole selected combination, not per individual option.
+        $search_query->join($value_table, function ($join) use ($value_table, $attribute) {
+            $join->on($value_table . '.post_id', '=', 'posts.id')
+                ->where($value_table . '.form_attribute_id', '=', $attribute->id);
+        });
+        $search_query->selectRaw($value_table . '.value as label, ' . (int) $attribute->id . ' as id');
+        $search_query->groupBy('label');
+    }
+
     private function getGroupedTotals(PostStatsSearchFields $search)
     {
         // Create a new query to select posts count
@@ -487,6 +544,7 @@ class EloquentPostRepository implements PostRepository
         switch ($search->groupBy()) {
                 // Group by attribute
             case 'attribute':
+                $this->applyGroupByAttribute($search_query, $search->groupByAttributeKey());
                 break;
                 // Group by statsus
             case 'status':

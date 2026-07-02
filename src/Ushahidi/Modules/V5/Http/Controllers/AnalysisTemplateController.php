@@ -35,7 +35,17 @@ class AnalysisTemplateController extends V5Controller
             'group_by' => 'nullable|string|max:50',
             'group_by_attribute_key' => 'nullable|string|max:255',
             'chart_type' => 'nullable|string|max:30',
-            'filters' => 'nullable|array',
+            // One entry per chart in a multi-chart report (the ngx-charts
+            // equivalent of the old platform's "+ Add more charts").
+            'report_config' => 'nullable|array',
+            'report_config.*.group_by' => 'required_with:report_config|string|max:50',
+            'report_config.*.group_by_attribute_key' => 'nullable|string|max:255',
+            'report_config.*.chart_type' => 'nullable|string|max:30',
+            // Template-wide filters, shared by every chart in report_config.
+            'status_filter' => 'nullable|array',
+            'status_filter.*' => 'string',
+            'tags_filter' => 'nullable|array',
+            'tags_filter.*' => 'integer',
         ];
     }
 
