@@ -35,13 +35,15 @@ class AnalysisTemplateController extends V5Controller
             'group_by' => 'nullable|string|max:50',
             'group_by_attribute_key' => 'nullable|string|max:255',
             'chart_type' => 'nullable|string|max:30',
-            // One entry per chart in a multi-chart report (the ngx-charts
-            // equivalent of the old platform's "+ Add more charts").
+            // One WebDataRocks report (`slice`/`options`/`conditions`/`formats`,
+            // no `dataSource.data` — that's always re-fetched live on apply)
+            // per pivot instance in a multi-pivot report (the "+ Add another
+            // pivot" button). Shape is library-defined and opaque to the
+            // backend, same as it was opaque under the old platform's
+            // Flexmonster-JSON-in-the-config-table storage — no sub-key
+            // validation beyond "it's an array".
             'report_config' => 'nullable|array',
-            'report_config.*.group_by' => 'required_with:report_config|string|max:50',
-            'report_config.*.group_by_attribute_key' => 'nullable|string|max:255',
-            'report_config.*.chart_type' => 'nullable|string|max:30',
-            // Template-wide filters, shared by every chart in report_config.
+            // Template-wide filters, shared by every pivot in report_config.
             'status_filter' => 'nullable|array',
             'status_filter.*' => 'string',
             'tags_filter' => 'nullable|array',

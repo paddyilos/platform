@@ -4,19 +4,23 @@
  *
  * Best-effort port of the old UNICC fork's saved Analysis report templates
  * (stored as Flexmonster pivot-config JSON in the generic `config` table,
- * group `filters`) into the new stack's dedicated `analysis_templates`
- * table (see ushahidi-api/LIBERIA_CUSTOM.md, "Analysis / Analysis
- * Templates"). The old templates are arbitrary 2D Flexmonster pivots
- * (a `rows` dimension × a `columns` dimension, with one or more chart
- * panels per template); the new schema only supports a flat array of
- * single-dimension `{group_by, group_by_attribute_key, chart_type}` chart
- * configs (report_config). This script decomposes each old 2D pivot into
- * up to two 1D charts — one per axis — rather than fabricating a 2D
- * crosstab equivalent. Anything it can't confidently map (a rows[] with
- * more than one entry — a true multi-level pivot — or a dimension name
- * that matches nothing on either the special-case list or the migrated
- * form_attributes) is DROPPED, not guessed, and logged so PBO staff know
- * exactly what needs manual recreation in the new Report Builder.
+ * group `filters`) into the new stack's WebDataRocks-based Report Builder
+ * (see ushahidi-api/LIBERIA_CUSTOM.md, "Analysis / Analysis Templates").
+ *
+ * WebDataRocks' report JSON shape (`slice.rows[]`/`columns[]`/`measures[]`,
+ * each `{uniqueName, ...}`) is close enough to the old Flexmonster shape
+ * that a full 2D (or N-level) pivot can be preserved almost verbatim —
+ * unlike this script's first version (written before the Report Builder
+ * was rebuilt around WebDataRocks), which had to decompose every 2D pivot
+ * into separate 1D bar charts. This version instead remaps each row/column
+ * dimension's `uniqueName` from the old Flexmonster field name (e.g.
+ * "Province", "Type of Incident") to the equivalent column name the new
+ * `PivotDataController`-backed data fetch actually produces (e.g.
+ * "County", or a migrated `form_attributes.label`) — dropping (and
+ * logging, not guessing) only the specific rows/columns entries that don't
+ * map, rather than the whole chart. Old per-member `filter` values (tied
+ * to old category/tag IDs) are stripped, not carried over — they'd
+ * reference IDs that mean nothing in the new dataset.
  *
  * Usage: php migration/migrate-liberia-analysis-templates.php
  *
@@ -56,40 +60,44 @@ if (!$hasReportConfig) {
     );
 }
 
-// ── Dimension name → new group_by mapping ───────────────────────────────────
+// ── Dimension name → new PivotDataController column name ───────────────────
 // Special-cased Flexmonster field names used across every old template
-// (see ushahidi-client's report-format.ts / post-filters.component.ts).
+// (see ushahidi-client's old report-format.ts / post-filters.component.ts),
+// mapped to the exact column names PivotDataController::index() produces.
 const SPECIAL_DIMENSIONS = [
-    'province' => ['group_by' => 'county'],
-    'district' => ['group_by' => 'district'],
-    'zone' => ['group_by' => 'district'],
-    'incident status' => ['group_by' => 'status'],
-    'status' => ['group_by' => 'status'],
+    'province' => 'County',
+    'district' => 'District',
+    'zone' => 'District',
+    'incident status' => 'Status',
+    'status' => 'Status',
+    'title of incident' => 'Title',
+    'post id' => 'Post ID',
 ];
 
-// Attribute types the new backend's `group_by=attribute` supports
-// (EloquentPostRepository::GROUPABLE_ATTRIBUTE_TABLES — see Phase 0).
+// Attribute types PivotDataController exposes as pivotable columns (must
+// match its own VALUE_TABLES keys exactly).
 const GROUPABLE_ATTRIBUTE_TYPES = ['varchar', 'text', 'datetime', 'decimal', 'int'];
 
 /**
- * Load migrated form_attributes into a label → {key, type} lookup, so old
+ * Load migrated form_attributes into a label → {type, input} lookup, so old
  * Flexmonster dimension names (which are attribute *labels*, e.g. "Type of
- * Incident") can be resolved to the new schema's attribute *keys*.
+ * Incident") can be checked against what PivotDataController will actually
+ * expose (it uses the label itself as the JSON key, no key remapping).
  */
 function loadAttributeLookup(PDO $dst): array {
     $lookup = [];
-    $rows = $dst->query("SELECT `key`, label, type FROM form_attributes")->fetchAll(PDO::FETCH_ASSOC);
+    $rows = $dst->query("SELECT label, type, input FROM form_attributes")->fetchAll(PDO::FETCH_ASSOC);
     foreach ($rows as $row) {
-        $lookup[strtolower(trim($row['label']))] = ['key' => $row['key'], 'type' => $row['type']];
+        $lookup[strtolower(trim($row['label']))] = ['type' => $row['type'], 'input' => $row['input']];
     }
     return $lookup;
 }
 
 /**
- * Map one old Flexmonster dimension name to a new {group_by,
- * group_by_attribute_key} pair, or null if it can't be mapped.
+ * Map one old Flexmonster dimension name to the new column name
+ * PivotDataController produces, or null if it can't be mapped.
  */
-function mapDimension(string $name, array $attributeLookup, array &$dropped): ?array {
+function mapDimensionName(string $name, array $attributeLookup, array &$dropped): ?string {
     $normalized = strtolower(trim($name));
 
     if (isset(SPECIAL_DIMENSIONS[$normalized])) {
@@ -102,52 +110,74 @@ function mapDimension(string $name, array $attributeLookup, array &$dropped): ?a
         return null;
     }
 
-    if ($attribute['type'] === 'tags') {
-        // Per-attribute tag pivoting has no new-schema equivalent — the
-        // closest match is the generic `tags` group-by (all post categories).
-        return ['group_by' => 'tags'];
-    }
-
     if (!in_array($attribute['type'], GROUPABLE_ATTRIBUTE_TYPES, true)) {
-        $dropped[] = "dimension '$name': attribute type '{$attribute['type']}' is not groupable";
+        $dropped[] = "dimension '$name': attribute type '{$attribute['type']}' has no column in the new pivot data (only varchar/text/datetime/decimal/int attributes do)";
+        return null;
+    }
+    if ($attribute['type'] === 'varchar' && $attribute['input'] === 'text') {
+        $dropped[] = "dimension '$name': plain free-text field, excluded from the new pivot data (same rule the Report Builder's own field discovery uses)";
         return null;
     }
 
-    return ['group_by' => 'attribute', 'group_by_attribute_key' => $attribute['key']];
+    // PivotDataController uses the attribute's label directly as the row key.
+    return $name;
 }
 
 /**
- * Decompose one old Flexmonster reportConfig[] entry (a rows × columns 2D
- * pivot) into up to two new 1D chart configs.
+ * Remap one old Flexmonster `slice.rows`/`columns` array to the new column
+ * names, dropping (and logging) individual entries that don't map. Strips
+ * `filter` (references old category/tag member IDs, meaningless on the new
+ * dataset) but keeps `sort` (harmless, still valid).
  */
-function mapReportConfigEntry(array $rc, array $attributeLookup, array &$dropped): array {
-    $charts = [];
-
-    $rows = $rc['slice']['rows'] ?? [];
-    if (count($rows) === 1) {
-        $mapped = mapDimension($rows[0]['uniqueName'] ?? '', $attributeLookup, $dropped);
-        if ($mapped) {
-            $charts[] = $mapped + ['chart_type' => 'bar'];
+function mapHierarchies(array $hierarchies, array $attributeLookup, array &$dropped): array {
+    $mapped = [];
+    foreach ($hierarchies as $h) {
+        if (($h['uniqueName'] ?? '') === '[Measures]') {
+            $mapped[] = ['uniqueName' => '[Measures]'];
+            continue;
         }
-    } elseif (count($rows) > 1) {
-        $dropped[] = 'rows[] has ' . count($rows) . ' entries — multi-level pivots are not supported';
+        $newName = mapDimensionName($h['uniqueName'] ?? '', $attributeLookup, $dropped);
+        if ($newName === null) {
+            continue;
+        }
+        $entry = ['uniqueName' => $newName];
+        if (isset($h['sort'])) {
+            $entry['sort'] = $h['sort'];
+        }
+        $mapped[] = $entry;
     }
+    return $mapped;
+}
 
-    $columns = array_values(array_filter(
-        $rc['slice']['columns'] ?? [],
-        fn($c) => ($c['uniqueName'] ?? '') !== '[Measures]'
+/**
+ * Remap one old Flexmonster reportConfig[] entry's slice into the new
+ * schema. Measures pass through largely as-is — "Post ID" is a stable
+ * field name present in both the old and new data shapes.
+ */
+function mapReportConfigEntry(array $rc, array $attributeLookup, array &$dropped): ?array {
+    $rows = mapHierarchies($rc['slice']['rows'] ?? [], $attributeLookup, $dropped);
+    $columns = mapHierarchies($rc['slice']['columns'] ?? [], $attributeLookup, $dropped);
+    $measures = array_values(array_filter(
+        $rc['slice']['measures'] ?? [],
+        fn($m) => ($m['uniqueName'] ?? '') !== ''
     ));
-    if (count($columns) === 1) {
-        $mapped = mapDimension($columns[0]['uniqueName'] ?? '', $attributeLookup, $dropped);
-        // Skip if it's the same dimension as the rows chart (avoid a duplicate).
-        if ($mapped && (!$charts || $charts[0]['group_by'] !== $mapped['group_by'])) {
-            $charts[] = $mapped + ['chart_type' => 'bar'];
-        }
-    } elseif (count($columns) > 1) {
-        $dropped[] = 'columns[] has ' . count($columns) . ' real dimensions — multi-level pivots are not supported';
+    if (!$measures) {
+        $measures = [['uniqueName' => 'Post ID', 'aggregation' => 'count']];
     }
 
-    return $charts;
+    // A chart with no dimensions left on either axis isn't a meaningful pivot.
+    if (!$rows && !$columns) {
+        $dropped[] = 'entire chart: no rows/columns dimension survived remapping';
+        return null;
+    }
+
+    return [
+        'slice' => array_filter([
+            'rows' => $rows ?: null,
+            'columns' => $columns ?: null,
+            'measures' => $measures,
+        ]),
+    ];
 }
 
 function parseOldDate(?array $date): ?int {
@@ -175,9 +205,9 @@ $totalChartsDropped = 0;
 $insert = $dst->prepare(
     "INSERT INTO analysis_templates
         (name, user_id, form_id, date_range_start, date_range_end, report_config,
-         status_filter, tags_filter, group_by, group_by_attribute_key, chart_type, created)
+         status_filter, tags_filter, chart_type, created)
      VALUES (:name, NULL, :form_id, :date_range_start, :date_range_end, :report_config,
-             :status_filter, :tags_filter, :group_by, :group_by_attribute_key, :chart_type, :created)"
+             :status_filter, :tags_filter, 'bar', :created)"
 );
 
 foreach ($rows as $row) {
@@ -192,11 +222,14 @@ foreach ($rows as $row) {
     $dropped = [];
     $reportConfig = [];
     foreach ($data['reportConfig'] ?? [] as $rc) {
-        $reportConfig = array_merge($reportConfig, mapReportConfigEntry($rc, $attributeLookup, $dropped));
+        $mapped = mapReportConfigEntry($rc, $attributeLookup, $dropped);
+        if ($mapped) {
+            $reportConfig[] = $mapped;
+        }
     }
     $totalChartsDropped += count($dropped);
     foreach ($dropped as $reason) {
-        log_step("  SKIP chart in template '$name': $reason");
+        log_step("  NOTE in template '$name': $reason");
     }
 
     if (!$reportConfig) {
@@ -221,13 +254,10 @@ foreach ($rows as $row) {
         ':report_config' => json_encode($reportConfig),
         ':status_filter' => $statusFilter,
         ':tags_filter' => $tagsFilter,
-        ':group_by' => $reportConfig[0]['group_by'],
-        ':group_by_attribute_key' => $reportConfig[0]['group_by_attribute_key'] ?? null,
-        ':chart_type' => $reportConfig[0]['chart_type'],
         ':created' => strtotime($row['updated']) ?: time(),
     ]);
-    log_step("  MIGRATED '$name': " . count($reportConfig) . ' chart(s)');
+    log_step("  MIGRATED '$name': " . count($reportConfig) . ' pivot(s)');
     $migrated++;
 }
 
-log_step("Done: $migrated migrated, $skipped skipped, $totalChartsDropped individual chart(s) dropped");
+log_step("Done: $migrated migrated, $skipped skipped, $totalChartsDropped individual dimension(s)/chart(s) dropped");

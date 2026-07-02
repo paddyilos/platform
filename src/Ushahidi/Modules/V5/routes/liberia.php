@@ -34,3 +34,8 @@ $router->get('v5/analysis-templates/{id}', 'AnalysisTemplateController@show')->m
 $router->post('v5/analysis-templates', 'AnalysisTemplateController@store')->middleware('auth:api');
 $router->put('v5/analysis-templates/{id}', 'AnalysisTemplateController@update')->middleware('auth:api');
 $router->delete('v5/analysis-templates/{id}', 'AnalysisTemplateController@destroy')->middleware('auth:api');
+
+// Lean per-post attribute-value rows for the Report Builder's WebDataRocks
+// pivot table — see PivotDataController for why this isn't just
+// `GET /posts?only=...,post_content`.
+$router->get('v5/analysis-pivot-data', 'PivotDataController@index')->middleware('auth:api');
