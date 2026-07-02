@@ -91,9 +91,14 @@ link, for consistency.
 
 ## Staying in sync with upstream
 
+Merge from upstream's latest **release** branch, not `develop` — `develop` moves continuously
+and pulls in unreviewed/unreleased work, whereas a `release/*` branch is a stable, tagged
+snapshot. Check `https://github.com/ushahidi/platform/branches` (or `git branch -a | grep
+release/`) for the newest one before merging; as of this writing that's `release/2025.04`.
+
 ```bash
 git fetch upstream
-git merge upstream/develop
+git merge upstream/release/2025.04   # replace with whatever is newest
 ```
 
 Expect conflicts only in the small number of stock files listed in the first table above —
