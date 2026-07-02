@@ -49,6 +49,31 @@ Stock files are touched as little as possible:
 | `database/migrations/phinx/20260701000001_liberia_add_access_analysis_permission.php` | Seeds the `Access analysis` permission and grants it to the `admin` role. |
 | `database/migrations/phinx/20260701000002_liberia_create_analysis_templates_table.php` | Creates the `analysis_templates` table. |
 
+## docker-compose.local.yml: mysql-data volume
+
+`docker-compose.local.yml` (added by an earlier commit, not itself new here) is
+the designated file for Liberia-specific local-dev infra overrides — it
+already overrides `mysql`'s `container_name`/`ports`/`environment`. The stock
+`docker-compose.yml`'s `mysql` service has **no `volumes:` entry at all**,
+so MariaDB's data directory lives only in the container's writable layer —
+a plain `docker compose down` (which removes containers, not just stops
+them) destroys the database. This caused a real incident: the ~5,687-post
+LERN dataset (migrated in via `migration/migrate-liberia.php`) was wiped by
+a routine cleanup `down` and had to be re-migrated from the old platform's
+still-running database.
+
+Fix: `docker-compose.local.yml` now mounts a named volume,
+`mysql-data:/var/lib/mysql`, on the `mysql` service, with a matching
+top-level `volumes: { mysql-data: }` declaration. Docker Compose merges
+service-level `volumes:` lists and top-level named-volume declarations
+across `-f` files (not last-file-wins), so this applies cleanly on top of
+the stock `mysql` service without touching `docker-compose.yml` — verified
+by inspecting `docker compose -f docker-compose.yml -f
+docker-compose.local.yml config` and by reproducing the exact `down`/`up`
+cycle that caused the original loss, confirming data now survives it.
+`docker compose down -v` still removes named volumes by design; only a
+plain `down` is protected against.
+
 ## Why `ContactUsController`/`SendPostAlertsListener` use `Mail::send()` directly
 
 `src/Ushahidi/Core/Tool/Mailer.php` (a stock file) only implements one mail type,

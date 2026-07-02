@@ -13,6 +13,8 @@ services:
       MARIADB_PASSWORD: ushahidi
     ports:
       - "33061:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
 
   redis:
     container_name: ushahidi-redis
@@ -35,3 +37,10 @@ services:
     environment:
       APP_KEY: base64:XuCy86TUW/f6+aXmf14s4f7xxdIjNWUdZrQFUzTt994=
       APP_ENV: local
+
+volumes:
+  # Persists MariaDB's data directory across `docker compose down` (which
+  # removes containers, not just stops them). The stock docker-compose.yml's
+  # mysql service has no volume at all — without this, `down` destroys the
+  # database. See LIBERIA_CUSTOM.md.
+  mysql-data:
