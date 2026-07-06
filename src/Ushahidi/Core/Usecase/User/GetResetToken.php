@@ -85,16 +85,20 @@ class GetResetToken implements Usecase
             $code = $this->repo->getResetToken($entity);
 
             // Email the reset token
-            $this->mailer->send(
-                $entity->email,
-                'resetpassword',
-                [
-                    'user_name' => $entity->realname,
-                    'code' => $code,
-                    'string' => base64_encode($code),
-                    'duration' => 30,
-                ]
-            );
+            try {
+                $this->mailer->send(
+                    $entity->email,
+                    'resetpassword',
+                    [
+                        'user_name' => $entity->realname,
+                        'code' => $code,
+                        'string' => base64_encode($code),
+                        'duration' => 30,
+                    ]
+                );
+            } catch (\Exception $e) {
+                \Log::warning('Password reset email failed: ' . $e->getMessage());
+            }
         }
 
         // Return an empty success response regardless

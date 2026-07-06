@@ -37,16 +37,20 @@ class PasswordResetCommandHandler extends AbstractCommandHandler
         }
         $code = $this->user_repository->getResetToken($user->id);
         $mailer = service('tool.mailer');
-        $mailer->send(
-            $user->email,
-            'resetpassword',
-            [
-                'user_name' => $user->realname,
-                'code' => $code,
-                'string' => base64_encode($code),
-                'duration' => 30,
-            ]
-        );
+        try {
+            $mailer->send(
+                $user->email,
+                'resetpassword',
+                [
+                    'user_name' => $user->realname,
+                    'code' => $code,
+                    'string' => base64_encode($code),
+                    'duration' => 30,
+                ]
+            );
+        } catch (\Exception $e) {
+            \Log::warning('Password reset email failed: ' . $e->getMessage());
+        }
         return 1;
     }
 }

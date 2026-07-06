@@ -39,6 +39,8 @@ class ContactUsController extends V5Controller
         $recipient = config('liberia.contact_us_email', env('CONTACT_US_EMAIL'));
         if ($recipient) {
             $this->sendNotificationEmail($recipient, $data);
+        } else {
+            \Log::warning('Contact Us email not sent: CONTACT_US_EMAIL is not configured');
         }
 
         return response()->json(['success' => true]);
