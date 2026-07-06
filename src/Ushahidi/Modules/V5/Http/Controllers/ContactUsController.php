@@ -50,15 +50,17 @@ class ContactUsController extends V5Controller
     {
         try {
             Mail::send([], [], function ($message) use ($recipient, $data) {
+                $html = '<p><strong>From:</strong> ' . e($data['name']) . ' &lt;' . e($data['email']) . '&gt;</p>' .
+                    ($data['phone_number'] ? '<p><strong>Phone:</strong> ' . e($data['phone_number']) . '</p>' : '') .
+                    '<p><strong>Subject:</strong> ' . e($data['subject']) . '</p>' .
+                    '<p><strong>Message:</strong></p>' .
+                    '<p>' . nl2br(e($data['message'])) . '</p>';
+
+                // Illuminate\Mail\Message has no html() method — set the body
+                // directly on the underlying Swift_Message instead.
                 $message->to($recipient)
-                    ->subject('iReport Liberia: ' . $data['subject'])
-                    ->html(
-                        '<p><strong>From:</strong> ' . e($data['name']) . ' &lt;' . e($data['email']) . '&gt;</p>' .
-                        ($data['phone_number'] ? '<p><strong>Phone:</strong> ' . e($data['phone_number']) . '</p>' : '') .
-                        '<p><strong>Subject:</strong> ' . e($data['subject']) . '</p>' .
-                        '<p><strong>Message:</strong></p>' .
-                        '<p>' . nl2br(e($data['message'])) . '</p>'
-                    );
+                    ->subject('iReport Liberia: ' . $data['subject']);
+                $message->getSwiftMessage()->setBody($html, 'text/html');
             });
         } catch (\Exception $e) {
             // Log silently — submission is already saved to DB
