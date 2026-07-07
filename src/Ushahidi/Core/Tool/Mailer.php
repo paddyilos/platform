@@ -47,6 +47,7 @@ class Mailer implements MailerContract
         $data = [
             'client_url' => $site_client_url,
             'site_name' => $site_name,
+            'site_email' => $site_email,
             'user_name' => $params['user_name'],
             'reset_string' => $params['string'],
             'reset_code' => $params['code'],
@@ -61,9 +62,9 @@ class Mailer implements MailerContract
             function ($message) use ($to, $subject, $site_email, $site_name) {
                 $message->to($to);
                 $message->subject($subject);
-                if ($site_email) {
-                    $message->from($site_email, $site_name);
-                }
+                // Keep the deployment name as the sender display name
+                // unconditionally, even if no site email is configured.
+                $message->from($site_email ?: config('mail.from.address'), $site_name);
             }
         );
     }

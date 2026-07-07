@@ -59,31 +59,6 @@
 										<table class="flexible" align="left" cellpadding="0" cellspacing="0" border="0" width="600">
 											<tr>
 												<td>
-													<table class="flexible" width="600" align="left" style="margin:0 auto;" cellpadding="0" cellspacing="0">
-														<tr>
-															<td style="padding:16px 0 32px;">
-																<table cellpadding="0" cellspacing="0" width="100%">
-																	<tr>
-																		<td>
-																			<table width="100%" cellpadding="0" cellspacing="0">
-																				<tr>
-																					<td align="left">
-																						<a target="_blank" href="#">
-																							<img src="https://raw.githubusercontent.com/ushahidi/platform-pattern-library/master/assets/img/wordmark_GoldonLight_2x.png" border="0" alt="Ushahidi" style="vertical-align: top; width: 115px; height: 25px;" />
-																						</a>
-																					</td>
-																				</tr>
-																			</table>
-																		</td>
-																	</tr>
-																</table>
-															</td>
-														</tr>
-													</table>
-												</td>
-											</tr>
-											<tr>
-												<td>
 													<table class="flexible" width="600" align="center" style="margin:0 auto;" cellpadding="0" cellspacing="0">
 														<tr>
 															<td style="padding:24px; border: 1px solid #D3D4D5; border-radius: 8px;">
@@ -143,12 +118,12 @@
 
 																				<tr>
 																					<td align="left" style="font:16px/24px Open Sans, Arial, Helvetica, sans-serif; font-weight: normal; color: #383E45; padding: 24px 0;">
-																						If you didn't initiate this request, please ignore and contact us on <a href="mailto:support@ushahidi.com" target="_blank" style="color: #AA8223; font-weight: 600; letter-spacing: 0.03125em;">support@ushahidi.com</a>
+																						If you didn't initiate this request, please ignore and contact us on <a href="mailto:<?php echo $site_email; ?>" target="_blank" style="color: #AA8223; font-weight: 600; letter-spacing: 0.03125em;"><?php echo $site_email; ?></a>
 																					</td>
 																				</tr>
 																				<tr>
 																					<td align="left" style="font:16px/24px Open Sans, Arial, Helvetica, sans-serif; font-weight: normal; color: #383E45;">
-																						Best regards, <br> The Ushahidi Team
+																						Best regards, <br> The <?php echo $site_name; ?> Team
 																					</td>
 																				</tr>
 																			</table>
@@ -157,18 +132,6 @@
 																	<tr>
 																		<td style="border-top: 1px solid #D3D4D5; padding: 8px 0 0;">
 																			<table cellpadding="0" cellspacing="0" width="100%">
-																				<tr>
-																					<td align="left" style="padding: 24px 0 16px;">
-																						<a target="_blank" href="#">
-																							<img src="https://raw.githubusercontent.com/ushahidi/platform-pattern-library/master/assets/img/wordmark_GoldonLight_2x.png" border="0" alt="Ushahidi" style="vertical-align: top; width: 115px; height: 25px;" />
-																						</a>
-																					</td>
-																				</tr>
-																				<tr>
-																					<td align="left" style="font:14px/18px Open Sans, Arial, Helvetica, sans-serif; font-weight: normal; color: #383E45; padding: 0 0 16px;">
-																						Ushahidi empowers people through citizen-generated data to develop solutions that strengthen their communities.
-																					</td>
-																				</tr>
 																				<!-- <tr>
 																					<td align="left" style="font:14px/18px Open Sans, Arial, Helvetica, sans-serif; font-weight: normal; color: #6C7074; padding: 8px 0 0;">
 																						No longer interested? <a href="#" style="font-weight: 600; color: #6C7074;">Unsubscribe</a> or <a href="#" style="font-weight: 600; color: #6C7074;">manage your subscriptions</a>
