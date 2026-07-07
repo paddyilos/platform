@@ -97,7 +97,7 @@ class GetResetToken implements Usecase
                     ]
                 );
             } catch (\Exception $e) {
-                \Log::warning('Password reset email failed: ' . $e->getMessage());
+                \Log::warning('Password reset email failed for ' . $entity->email . ': ' . $e->getMessage());
             }
         }
 

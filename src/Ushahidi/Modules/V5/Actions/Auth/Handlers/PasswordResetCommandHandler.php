@@ -49,7 +49,7 @@ class PasswordResetCommandHandler extends AbstractCommandHandler
                 ]
             );
         } catch (\Exception $e) {
-            \Log::warning('Password reset email failed: ' . $e->getMessage());
+            \Log::warning('Password reset email failed for ' . $user->email . ': ' . $e->getMessage());
         }
         return 1;
     }
