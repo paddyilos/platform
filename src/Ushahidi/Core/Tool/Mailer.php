@@ -13,12 +13,10 @@ namespace Ushahidi\Core\Tool;
 use Illuminate\Support\Str;
 use Illuminate\Contracts\Mail\Mailer as LaravelMailer;
 use Ushahidi\Contracts\Mailer as MailerContract;
-use Ushahidi\Core\Concerns\UsesSiteInfo;
+use Ushahidi\Modules\V5\Models\Config as SiteConfigModel;
 
 class Mailer implements MailerContract
 {
-    use UsesSiteInfo;
-
     protected $mailer;
 
     public function __construct(LaravelMailer $mailer)
@@ -40,9 +38,19 @@ class Mailer implements MailerContract
 
     protected function sendResetpassword($to, $params)
     {
-        $site_name = $this->getSite()->getName();
-        $site_email = $this->getSite()->getEmail();
-        $site_client_url = $this->getSite()->getClientUri() ?? env('DEFAULT_CLIENT_URL');
+        // Read site config directly via the (reliable) V5 Eloquent model —
+        // Site::getSiteConfig(), which getSite()->getName()/getEmail()/
+        // getClientUri() rely on, goes through a legacy AuraDI-constructed
+        // repository that silently returns stale/empty results for the
+        // "site" config group in this deployment's single-tenant setup.
+        $site_config = SiteConfigModel::where('group_name', 'site')
+            ->whereIn('config_key', ['name', 'email', 'client_url'])
+            ->pluck('config_value', 'config_key');
+
+        $site_name = $site_config->get('name') ?: 'Deployment';
+        $site_email = $site_config->get('email')
+            ?: (($host = request()->getHost()) ? "noreply@$host" : null);
+        $site_client_url = $site_config->get('client_url') ?: env('DEFAULT_CLIENT_URL');
 
         $data = [
             'client_url' => $site_client_url,
