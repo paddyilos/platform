@@ -114,7 +114,7 @@ class Category extends BaseModel
 
     public function children()
     {
-        return $this->hasMany(Category::class, 'parent_id', 'id')->withoutGlobalScopes()->with('translations');
+        return $this->hasMany(Category::class, 'parent_id', 'id')->withoutGlobalScopes()->with(['translations', 'parent']);
     }
 
     /**
