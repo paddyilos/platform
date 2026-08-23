@@ -27,4 +27,6 @@ interface Permission
         const DELETE_OWN_POSTS      = 'Delete Their Own Posts';
         // Liberia PBO custom permission — gates the Analysis dashboard/templates feature.
         const ACCESS_ANALYSIS       = 'Access analysis';
+        // Liberia PBO custom permission — gates setting the admin-only Incident Status field.
+        const SET_INCIDENT_STATUS   = 'Set incident status';
 }

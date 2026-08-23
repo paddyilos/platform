@@ -17,6 +17,7 @@ use Ushahidi\Modules\V5\Events\PostUpdatedEvent;
 use Ushahidi\Modules\V5\Http\Resources\PostResource as OldPostResource;
 use Ushahidi\Modules\V5\Models\Post\Post;
 use Ushahidi\Modules\V5\Models\Post\PostStatus;
+use Ushahidi\Modules\V5\Models\Post\IncidentStatus;
 use Ushahidi\Modules\V5\Exceptions\V5Exception;
 use Illuminate\Support\Facades\DB;
 use Ushahidi\Modules\V5\Common\ValidatorRunner;
@@ -184,7 +185,7 @@ class PostController extends V5Controller
 
     /**
      * Patch the status of a post
-     * @TODO: add all patch features. Right now we cover status only
+     * @TODO: add all patch features. Right now we cover status and incident_status only
      * @param int $id
      * @param Request $request
      * @return PostResource|JsonResponse
@@ -194,18 +195,34 @@ class PostController extends V5Controller
     {
         $post = Post::find($id);
         $status = $this->getField('status', $request->input('status'));
+        $hasIncidentStatus = $request->has('incident_status');
+        $incidentStatus = $hasIncidentStatus ? $request->input('incident_status') : null;
+
         if (!$post) {
             return self::make404();
         }
-        if (!$status) {
-            return self::make422("The V5 API requires a status for post status updates.");
+        if (!$status && !$hasIncidentStatus) {
+            return self::make422("The V5 API requires a status or incident_status for post status updates.");
+        }
+        if ($hasIncidentStatus && $incidentStatus !== null && !in_array($incidentStatus, IncidentStatus::all(), true)) {
+            return self::make422("Invalid incident_status value.");
         }
 
         DB::beginTransaction();
         try {
-            // TODO: $post->doStatusTransition($status);
-            $post->setAttribute('status', $status);
-            $this->authorize('changeStatus', $post);
+            if ($status) {
+                // TODO: $post->doStatusTransition($status);
+                $post->setAttribute('status', $status);
+                $this->authorize('changeStatus', $post);
+            }
+
+            if ($hasIncidentStatus) {
+                if (!$this->requireCanSetIncidentStatus()) {
+                    DB::rollback();
+                    return self::make403(trans('errors.generic403'));
+                }
+                $post->setAttribute('incident_status', $incidentStatus);
+            }
 
             if ($post->save()) {
                 DB::commit();
@@ -222,6 +239,19 @@ class PostController extends V5Controller
             return self::make500($e->getMessage());
         }
     } // end patchStatus
+
+    /**
+     * Liberia PBO custom check — gates writes to the admin-only Incident
+     * Status field. Same `service('authorizer.post')->acl->hasPermission()`
+     * template used by AnalysisTemplateController/PivotDataController.
+     * See LIBERIA_CUSTOM.md.
+     */
+    private function requireCanSetIncidentStatus(): bool
+    {
+        $authorizer = service('authorizer.post');
+        $user = $authorizer->getUser();
+        return $authorizer->acl->hasPermission($user, Permission::SET_INCIDENT_STATUS);
+    }
 
     /**
      * @param Request $request

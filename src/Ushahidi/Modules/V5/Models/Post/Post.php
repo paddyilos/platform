@@ -68,7 +68,10 @@ class Post extends BaseModel
         // Liberia PBO custom fields — county/district, exposed for the
         // Analysis dashboard's reports-by-county chart. See LIBERIA_CUSTOM.md.
         'mgmt_lev_1',
-        'mgmt_lev_2'
+        'mgmt_lev_2',
+        // Liberia PBO custom field — admin-only Incident Status, independent
+        // of `status`. See IncidentStatus.php and LIBERIA_CUSTOM.md.
+        'incident_status'
     ];
 
     public const ALLOWED_RELATIONSHIPS = [

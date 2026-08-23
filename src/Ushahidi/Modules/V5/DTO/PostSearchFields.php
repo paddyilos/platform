@@ -14,6 +14,9 @@ class PostSearchFields extends SearchFields
     protected $post_id;
 
     protected $status;
+    // Liberia PBO custom field — admin-only Incident Status, independent of
+    // `status`. See LIBERIA_CUSTOM.md.
+    protected $incident_status;
     protected $locale;
     protected $slug;
     protected $form;
@@ -161,6 +164,10 @@ class PostSearchFields extends SearchFields
 
         $this->set = $this->getParameterAsArray($request->get('set'));
         $this->tags = $this->getParameterAsArray($request->get('tags'));
+
+        // Liberia PBO custom field — admin-only Incident Status, independent
+        // of `status`. See LIBERIA_CUSTOM.md.
+        $this->incident_status = $this->getParameterAsArray($request->get('incident_status'));
     }
 
 
@@ -222,6 +229,13 @@ class PostSearchFields extends SearchFields
     public function status(): array
     {
         return $this->status;
+    }
+
+    // Liberia PBO custom field — admin-only Incident Status, independent of
+    // `status`. See LIBERIA_CUSTOM.md.
+    public function incidentStatus(): array
+    {
+        return $this->incident_status;
     }
 
 

@@ -31,6 +31,9 @@ class PostResource extends BaseResource
             'author_email',
             'author_realname',
             'status',
+            // Liberia PBO custom field — admin-only Incident Status, independent
+            // of `status`. See LIBERIA_CUSTOM.md.
+            'incident_status',
             'published_to',
             'locale',
             'color',

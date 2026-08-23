@@ -9,6 +9,7 @@ use Ushahidi\Modules\V5\Models\Post;
 use Illuminate\Http\Request;
 use Ushahidi\Modules\V5\Rules\StandardText;
 use Ushahidi\Modules\V5\Models\Post\PostStatus;
+use Ushahidi\Modules\V5\Models\Post\IncidentStatus;
 use Illuminate\Support\Facades\Request as RequestFacade;
 
 class PostRequest extends BaseRequest
@@ -62,6 +63,12 @@ class PostRequest extends BaseRequest
             'status' => [
                 'filled',
                 Rule::in(PostStatus::all())
+            ],
+            // Liberia PBO custom field — admin-only Incident Status, independent
+            // of `status`. See IncidentStatus.php and LIBERIA_CUSTOM.md.
+            'incident_status' => [
+                'nullable',
+                Rule::in(IncidentStatus::all())
             ],
             'post_content.*.form_id' => [
                 'same:form_id'

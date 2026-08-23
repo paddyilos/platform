@@ -57,6 +57,27 @@ class EloquentPostRepository implements PostRepository
         }
         return false;
     }
+
+    /**
+     * Liberia PBO custom check — mirrors userHasManagePostPermissions() above.
+     * Guards the `incident_status[]` search filter (see setSearchCondition()) the
+     * same way setGuestConditions() guards `status`, so an unprivileged/anonymous
+     * request (including a stale cached filter value from a previous admin
+     * session in the same browser) can never affect results via this field.
+     * See LIBERIA_CUSTOM.md.
+     */
+    private function userHasSetIncidentStatusPermission($user)
+    {
+        if (!$user || !$user->id) {
+            return false;
+        }
+        if ($user->role === "admin") {
+            return true;
+        }
+        $permissions =
+            RolePermission::select("permission")->where('role', '=', $user->role)->get()->pluck('permission');
+        return in_array("Set incident status", $permissions->toArray());
+    }
     private function setSearchCondition(PostSearchFields $search_fields, $query, bool $unstrucured_posts_only = false)
     {
 
@@ -83,6 +104,14 @@ class EloquentPostRepository implements PostRepository
 
         if (count($search_fields->status())) {
             $query->whereIn('posts.status', $search_fields->status());
+        }
+        // Liberia PBO custom field — admin-only Incident Status, independent
+        // of `status`. Only applied for users who can actually set it — an
+        // unprivileged/anonymous request naming this filter is silently
+        // ignored, same as how setGuestConditions() overrides `status` for
+        // guests rather than trusting the client. See LIBERIA_CUSTOM.md.
+        if (count($search_fields->incidentStatus()) && $this->userHasSetIncidentStatusPermission(Auth::user())) {
+            $query->whereIn('posts.incident_status', $search_fields->incidentStatus());
         }
         if ($unstrucured_posts_only) {
             $query->whereNull('posts.form_id');
