@@ -128,10 +128,13 @@ which under-granted relative to legacy for the 4 real `Management User` accounts
 deployment's migrated data (see `migration/migrate-liberia.php`'s verbatim `roles`/`users`
 copy). `20260824000001_liberia_extend_incident_status_permission_roles.php` grants the
 same permission to `Management User` (the exact `roles.name` value carried over by that
-copy) plus `super`/`operatoruser` (unused in this deployment's current data, since those
-role rows were deleted from Liberia's production DB before the migration dump was taken,
-but kept for parity with the legacy allowlist in case they're recreated). No code changes
-were needed for this — `PostController::requireCanSetIncidentStatus()` and
+copy) plus `super`/`operatoruser` for parity with the legacy allowlist. Those two roles
+don't exist in this deployment's migrated data (deleted from Liberia's production DB
+before the migration dump was taken) — found live, the hard way: `roles_permissions.role`
+has a foreign key to `roles.name` (`roles_permissions_ibfk_1`), so the migration also
+creates the two role rows themselves (`protected = 0`, no users) before granting them the
+permission, otherwise the `INSERT` 1452s. No code changes were needed for the permission
+check itself — `PostController::requireCanSetIncidentStatus()` and
 `EloquentPostRepository::userHasSetIncidentStatusPermission()` both already do a generic
 `roles_permissions` lookup keyed by the user's role, same as every other permission.
 
