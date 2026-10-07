@@ -16,6 +16,7 @@
 
 namespace Ushahidi\Core\Usecase\Message;
 
+use Illuminate\Support\Facades\Log;
 use Ushahidi\Contracts\Entity;
 use Ushahidi\Contracts\Validator;
 use Ushahidi\Core\Entity\Message;
@@ -66,6 +67,20 @@ class ReceiveMessage extends CreateUsecase
         // Fetch and hydrate the message entity...
         $entity = $this->getEntity();
 
+        // Liberia custom: SMS must end with ";end;" to be imported. Others are
+        // silently dropped (no exception, so providers don't retry the webhook).
+        if ($entity->type === 'sms') {
+            $stripped = $this->stripSmsTerminator((string) $entity->message);
+            if ($stripped === null) {
+                Log::info('SMS discarded: missing ;end; terminator', [
+                    'from' => $this->getPayload('from'),
+                    'data_source' => $this->getPayload('data_source'),
+                ]);
+                return null;
+            }
+            $entity->setState(['message' => $stripped]);
+        }
+
         /*
          * re: github.com/ushahidi/platform/issues/2111
          * Message reception is not something that happens under the usual
@@ -106,6 +121,21 @@ class ReceiveMessage extends CreateUsecase
         ]);
 
         return $id;
+    }
+
+    /**
+     * Remove a trailing ";end;" marker (case-insensitive, trailing whitespace allowed).
+     *
+     * @param  string $message
+     * @return string|null Message without the marker, or null if it was missing
+     */
+    protected function stripSmsTerminator($message)
+    {
+        if (!preg_match('/;end;\s*$/i', $message)) {
+            return null;
+        }
+
+        return rtrim(preg_replace('/;end;\s*$/i', '', $message));
     }
 
     /**

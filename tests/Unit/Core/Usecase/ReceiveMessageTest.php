@@ -142,6 +142,23 @@ class ReceiveMessageTest extends TestCase
 
         $this->usecase
             ->setPayload([
+                'message' => 'Some junk;end;',
+                'type' => 'sms',
+                'from' => 1234,
+                'contact_type' => 'phone',
+                'data_source' => 'smssync',
+            ])
+            ->interact();
+    }
+
+    public function testSmsWithoutTerminatorIsDiscarded()
+    {
+        $this->messageRepo->shouldReceive('getEntity')->andReturn(new Message());
+        $this->messageRepo->shouldNotReceive('create');
+        $this->contactRepo->shouldNotReceive('create');
+
+        $result = $this->usecase
+            ->setPayload([
                 'message' => 'Some junk',
                 'type' => 'sms',
                 'from' => 1234,
@@ -149,5 +166,67 @@ class ReceiveMessageTest extends TestCase
                 'data_source' => 'smssync',
             ])
             ->interact();
+
+        $this->assertNull($result);
+    }
+
+    public function testSmsTerminatorIsStripped()
+    {
+        $message = new Message();
+        $this->messageRepo->shouldReceive('getEntity')->andReturn($message);
+        $this->messageRepo->shouldReceive('create')->with($message)->andReturn(1);
+        $this->messageRepo->shouldReceive('update')->andReturn(1);
+        $this->contactRepo->shouldReceive('getByContact')->andReturn(new Contact([
+            'id' => 2,
+            'type' => 'phone',
+            'contact' => 1234,
+        ]));
+        $this->targetedSurveyStateRepo
+            ->shouldReceive('isContactInActiveTargetedSurveyAndReceivedMessage')
+            ->andReturn(false);
+        $this->postRepo->shouldReceive('getEntity')->andReturn(new Post);
+        $this->postRepo->shouldReceive('create')->andReturn(88);
+
+        $this->usecase
+            ->setPayload([
+                'message' => "Title; Desc;END; \n",
+                'type' => 'sms',
+                'from' => 1234,
+                'contact_type' => 'phone',
+                'data_source' => 'smssync',
+            ])
+            ->interact();
+
+        $this->assertSame('Title; Desc', $message->message);
+    }
+
+    public function testNonSmsWithoutTerminatorIsStillReceived()
+    {
+        $message = new Message();
+        $this->messageRepo->shouldReceive('getEntity')->andReturn($message);
+        $this->messageRepo->shouldReceive('create')->with($message)->andReturn(1)->once();
+        $this->messageRepo->shouldReceive('update')->andReturn(1);
+        $this->contactRepo->shouldReceive('getByContact')->andReturn(new Contact([
+            'id' => 2,
+            'type' => 'email',
+            'contact' => 'a@b.c',
+        ]));
+        $this->targetedSurveyStateRepo
+            ->shouldReceive('isContactInActiveTargetedSurveyAndReceivedMessage')
+            ->andReturn(false);
+        $this->postRepo->shouldReceive('getEntity')->andReturn(new Post);
+        $this->postRepo->shouldReceive('create')->andReturn(88);
+
+        $this->usecase
+            ->setPayload([
+                'message' => 'No marker',
+                'type' => 'email',
+                'from' => 'a@b.c',
+                'contact_type' => 'email',
+                'data_source' => 'email',
+            ])
+            ->interact();
+
+        $this->assertSame('No marker', $message->message);
     }
 }
