@@ -45,7 +45,7 @@ trait HandlePostOnlyParameters
                     }
                     if ($post->message) {
                         if ($this->userHasManagePostPermissions()) {
-                            $post->contact = $post->message->contact;
+                            $post->contact = \Ushahidi\Addons\LiberiaSms\ContactOwner::attachUser($post->message->contact);
                         } else {
                             $post->contact = $post->message->contact
                                 ? $post->message->contact->setVisible(["id"])
