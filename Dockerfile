@@ -10,15 +10,21 @@ RUN apt-key del B188E2B695BD4743 2>/dev/null || true && \
     dpkg -i /tmp/debsuryorg-archive-keyring.deb && \
     rm /tmp/debsuryorg-archive-keyring.deb && \
     apt-get update
-RUN apt-get install -y php-pear php${PHP_MAJOR_VERSION}-dev
-RUN pecl channel-update pecl.php.net
-RUN pecl channel-update pecl.php.net
-RUN pecl install xdebug-3.1.6 
-ENV PHP_INI_DIR=/etc/php/${PHP_MAJOR_VERSION}/fpm
-RUN docker-php-ext-enable xdebug
+# Liberia custom: xdebug is opt-in (--build-arg INSTALL_XDEBUG=true). Its build
+# dependencies (php-pear, php-dev) come from sury.org, whose php7.4-dev pool
+# files 404 as of Nov 2026, which broke production image builds. See
+# LIBERIA_CUSTOM.md.
+ARG INSTALL_XDEBUG=false
+COPY docker-php-ext-xdebug.ini /tmp/docker-php-ext-xdebug.ini
+RUN if [ "$INSTALL_XDEBUG" = "true" ]; then \
+      apt-get install -y php-pear php${PHP_MAJOR_VERSION}-dev && \
+      pecl channel-update pecl.php.net && \
+      pecl install xdebug-3.1.6 && \
+      PHP_INI_DIR=/etc/php/${PHP_MAJOR_VERSION}/fpm docker-php-ext-enable xdebug && \
+      PHP_INI_DIR=/etc/php/${PHP_MAJOR_VERSION}/cli docker-php-ext-enable xdebug && \
+      cp /tmp/docker-php-ext-xdebug.ini /etc/php/${PHP_MAJOR_VERSION}/fpm/conf.d/ ; \
+    fi
 ENV PHP_INI_DIR=/etc/php/${PHP_MAJOR_VERSION}/cli
-RUN docker-php-ext-enable xdebug
-COPY docker-php-ext-xdebug.ini /etc/php/${PHP_MAJOR_VERSION}/fpm/conf.d
 
 WORKDIR /var/www
 COPY composer.json ./
