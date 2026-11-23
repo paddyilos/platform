@@ -29,6 +29,7 @@ ENV PHP_INI_DIR=/etc/php/${PHP_MAJOR_VERSION}/cli
 WORKDIR /var/www
 COPY composer.json ./
 COPY composer.lock ./
+COPY docker/vendored ./docker/vendored
 RUN composer self-update --2
 RUN composer install --no-autoloader --no-scripts
 
